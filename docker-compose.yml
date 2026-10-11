@@ -1,0 +1,83 @@
+# 两种部署模式共用同一份镜像：
+#   docker compose up -d review-api                # HTTP 审查服务（默认）
+#   docker compose --profile acps up -d review-acps # ACPs Partner（ATR 注册 + AIP Direct）
+#
+# 环境变量模板见 docker/.env.example，可复制为 .env 后由 compose 自动读取。
+
+services:
+  review-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: content-safety-review:1.0.0
+    container_name: content-safety-review
+    command: ["serve-http", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "8080:8080"
+    environment:
+      CSR_HTTP_HOST: "0.0.0.0"
+      CSR_HTTP_PORT: "8080"
+      CSR_AUTH_TOKEN: "${CSR_AUTH_TOKEN:-}"
+      CSR_LOG_LEVEL: "${CSR_LOG_LEVEL:-INFO}"
+      CSR_MAX_BODY_BYTES: "${CSR_MAX_BODY_BYTES:-1048576}"
+    # 镜像自带 HEALTHCHECK（python -m call_safety_review health --port 8080）
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  review-acps:
+    profiles: ["acps"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: content-safety-review:1.0.0
+    container_name: content-safety-review-acps
+    command: ["acps", "--http-host", "0.0.0.0", "--http-port", "8080"]
+    ports:
+      - "8080:8080"   # 内嵌 HTTP 服务（健康检查与旁路调用）
+      - "8443:8443"   # AIP Direct JSON-RPC listener
+    environment:
+      # —— ACPs 部署事实（ACPs 模式必填）——
+      # 注意：这里用 `:-` 而不是 `:?`。Compose 会解析整份文件（包括未激活的 profile），
+      # 用 `:?` 会让 `docker compose up review-api` 这类纯 HTTP 用法也被拦住。
+      # 改为在容器启动时校验：缺变量时进程立即退出并打印缺失项清单。
+      ACPS_REGISTRY_URL: "${ACPS_REGISTRY_URL:-}"
+      ACPS_CA_URL: "${ACPS_CA_URL:-}"
+      ACPS_DISCOVERY_URL: "${ACPS_DISCOVERY_URL:-}"
+      ACPS_PUBLIC_ENDPOINT: "${ACPS_PUBLIC_ENDPOINT:-}"
+      ACPS_ORGANIZATION: "${ACPS_ORGANIZATION:-}"
+      ACPS_COUNTRY_CODE: "${ACPS_COUNTRY_CODE:-CN}"
+      ACPS_REGISTRY_MTLS_URL: "${ACPS_REGISTRY_MTLS_URL:-}"
+      ACPS_SERVE_HOST: "0.0.0.0"
+      ACPS_SERVE_PORT: "8443"
+      ACPS_WORKSPACE: "/var/lib/content-safety-review/acps"
+      # —— Registry 开发者凭据（ACPs 模式必填，由部署方提供）——
+      ACPS_USERNAME: "${ACPS_USERNAME:-}"
+      ACPS_PASSWORD: "${ACPS_PASSWORD:-}"
+      # —— 模型 Provider（审查智能体的推理侧）——
+      OPENAI_MODEL: "${OPENAI_MODEL:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-https://api.openai.com/v1}"
+      # —— 内嵌 HTTP 服务 ——
+      CSR_HTTP_PORT: "8080"
+      CSR_AUTH_TOKEN: "${CSR_AUTH_TOKEN:-}"
+      CSR_LOG_LEVEL: "${CSR_LOG_LEVEL:-INFO}"
+      CSR_APPROVAL_POLL_SECONDS: "${CSR_APPROVAL_POLL_SECONDS:-60}"
+    volumes:
+      - csr-acps-state:/var/lib/content-safety-review
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+volumes:
+  csr-acps-state:

@@ -1,0 +1,10 @@
+# 仓库内统一使用 LF（本项目面向 Linux / Docker 运行）
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换与文本差异
+*.whl binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary

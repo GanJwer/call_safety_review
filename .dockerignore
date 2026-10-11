@@ -1,0 +1,13 @@
+# 构建上下文只保留运行镜像所需内容（Dockerfile 会 COPY pyproject.toml、README.md、examples/）
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.pytest_cache
+**/.ruff_cache
+**/tests/
+**/.env
+.tmp*
+.wit/
+**/.git/
+**/.gitignore
+docker-compose.yml

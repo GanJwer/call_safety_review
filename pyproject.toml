@@ -1,0 +1,25 @@
+[project]
+name = "call-safety-review"
+version = "1.0.0"
+description = "智能体调用内容安全审查智能体：调用发出前的载荷层审查、最小化披露与安全载荷重写"
+requires-python = ">=3.12,<3.15"
+readme = "README.md"
+license = { text = "Proprietary" }
+# wit / acps-sdk 由发行目录的 wheel 提供（先装 acps-sdk 2.2.0，再装 wit-framework 2.1.0），
+# 不通过包索引解析，因此这里不声明为可解析依赖。
+dependencies = []
+
+[project.optional-dependencies]
+# 仅在使用 RabbitMQ 版 AIP Group 时需要，与 wit wheel 的 [acps-group] extra 配套。
+acps-group = ["aio-pika>=10"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "acps_interop: requires externally managed ACPs infrastructure",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
