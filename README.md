@@ -85,6 +85,19 @@ ACPs 模式的状态推进语义（关系到探针怎么配）：
 
 `acps --once` 用于"跑一次就退出"的检查（就绪 = 0、待审核 = 2、阻塞 = 1）。
 
+**平台端点**（梧桐智能体互联平台，见 `docker/.env.example`）：
+
+| 变量 | 值 |
+|---|---|
+| `ACPS_REGISTRY_URL` | `https://wt.ioa.pub/registry-server` |
+| `ACPS_CA_URL` | `https://wt.ioa.pub/ca-server` |
+| `ACPS_DISCOVERY_URL` | `https://wt.ioa.pub/discovery` |
+| `ACPS_PUBLIC_ENDPOINT` | 你自己的 HTTPS 端点（8443 需 **mTLS 透传**，不要 TLS 终结） |
+| AMP 上报端点 | `wt.ioa.pub:19092`（Kafka/TLS，容器需可出网） |
+
+证书的 DNS SAN 由 `ACPS_PUBLIC_ENDPOINT` 推导（实测：即使不显式传 `AgentCertificateRequest(dns=...)`，
+ACS 里也会出现 `altNames.dns=[公开端点主机]`），因此**域名确定后不要更改**。
+
 部署排障：
 
 | 现象 | 原因 | 处置 |
