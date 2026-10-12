@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 from .catalog import CapabilityCatalog, default_catalog
 from .capabilities import build_capabilities
@@ -98,17 +98,17 @@ def build_runtime(
     return WitRuntime(agent, workspace=workspace, acps=acps)
 
 
-def _first_env(*names: str) -> str | None:
+def _first_env(names: Sequence[str], env: Mapping[str, str]) -> str | None:
     """按顺序返回第一个非空环境变量。"""
 
     for name in names:
-        value = os.environ.get(name)
+        value = env.get(name)
         if value and value.strip():
             return value.strip()
     return None
 
 
-def resolve_model_settings() -> dict[str, str]:
+def resolve_model_settings(env: Mapping[str, str] | None = None) -> dict[str, str]:
     """解析模型连接参数，兼容三种环境变量命名。
 
     * 通用命名：``LLM_MODEL`` / ``LLM_API_KEY`` / ``LLM_BASE_URL``（优先级最高）
@@ -119,14 +119,15 @@ def resolve_model_settings() -> dict[str, str]:
     因此接 DeepSeek 只需要一个环境变量。
     """
 
-    model = _first_env("LLM_MODEL", "OPENAI_MODEL", "DEEPSEEK_MODEL")
-    api_key = _first_env("LLM_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY")
-    base_url = _first_env("LLM_BASE_URL", "OPENAI_BASE_URL", "DEEPSEEK_BASE_URL")
+    values: Mapping[str, str] = os.environ if env is None else env
+    model = _first_env(("LLM_MODEL", "OPENAI_MODEL", "DEEPSEEK_MODEL"), values)
+    api_key = _first_env(("LLM_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY"), values)
+    base_url = _first_env(("LLM_BASE_URL", "OPENAI_BASE_URL", "DEEPSEEK_BASE_URL"), values)
 
     deepseek_only = (
-        _first_env("DEEPSEEK_API_KEY") is not None
-        and _first_env("LLM_API_KEY", "OPENAI_API_KEY") is None
-        and _first_env("LLM_BASE_URL", "OPENAI_BASE_URL") is None
+        _first_env(("DEEPSEEK_API_KEY",), values) is not None
+        and _first_env(("LLM_API_KEY", "OPENAI_API_KEY"), values) is None
+        and _first_env(("LLM_BASE_URL", "OPENAI_BASE_URL"), values) is None
     )
     if deepseek_only:
         model = model or DEEPSEEK_DEFAULT_MODEL
@@ -139,7 +140,11 @@ def resolve_model_settings() -> dict[str, str]:
     }
 
 
-def openai_model_from_env(*, temperature: float = 0.0) -> Any:
+def openai_model_from_env(
+    *,
+    temperature: float = 0.0,
+    env: Mapping[str, str] | None = None,
+) -> Any:
     """按环境变量接入模型 Provider（OpenAI 兼容即可，例如 DeepSeek）。
 
     DeepSeek 示例（只需 key）::
@@ -151,7 +156,7 @@ def openai_model_from_env(*, temperature: float = 0.0) -> Any:
 
     from wit import OpenAIChatProvider
 
-    settings = resolve_model_settings()
+    settings = resolve_model_settings(env)
     if not settings["model"] or not settings["api_key"]:
         raise RuntimeError(
             "未配置模型 Provider：需要 LLM_MODEL / OPENAI_MODEL / DEEPSEEK_MODEL 之一，"

@@ -142,6 +142,15 @@ docker run --entrypoint sh -it content-safety-review:1.0.0   # 进容器排查
 | `ACPS_*` | — | Registry / CA / Discovery / 公开端点 / 机构等部署事实，见 `docker/.env.example` 与手册《Identity 与可信注册》 |
 | `DEEPSEEK_API_KEY`（+ 可选 `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL`） | 模型 `deepseek-chat`，base_url `https://api.deepseek.com` | ACPs 模式下审查智能体使用的模型 Provider，**DeepSeek 只需填 key** |
 | `LLM_*` / `OPENAI_*` | — | 通用 / OpenAI 兼容命名，优先级 `LLM_*` > `OPENAI_*` > `DEEPSEEK_*`；自建网关填 `OPENAI_BASE_URL` 即可 |
+
+模型实测（同一账号，`GET /models` 清单为准）：`deepseek-chat` 单次审查 4.6–6.6 秒、
+`deepseek-flash` 7.8–9.5 秒、`deepseek-v4-pro` 14–20 秒；三者 function calling 均可用于本智能体。
+审查在调用关键路径上，建议用低延迟模型。真实模型联调用例：
+
+```powershell
+$env:DEEPSEEK_API_KEY='sk-...'
+& $py -m unittest tests.test_deepseek_live -v     # 3 项；未设置 key 时自动跳过
+```
 | `CSR_APPROVAL_POLL_SECONDS` | `60` | Registry 待审核时重新推进注册状态的间隔 |
 
 **运维要点**：容器以非 root 运行，compose 已配置 `read_only: true` + `tmpfs: /tmp` +

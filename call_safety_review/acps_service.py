@@ -210,8 +210,8 @@ async def preflight(
         try:
             from .agent import resolve_model_settings
 
-            resolved = resolve_model_settings()
-            model = openai_model_from_env()
+            resolved = resolve_model_settings(values)
+            model = openai_model_from_env(env=values)
             checks.append(
                 {
                     "name": "model_provider",
