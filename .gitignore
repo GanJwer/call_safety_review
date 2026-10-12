@@ -8,8 +8,14 @@ __pycache__/
 # 运行期与本地状态
 .wit/
 .tmp*
-.env
 *.local
+
+# 本地环境文件：`.env` 不含斜杠，匹配任意目录层级（仓库根与 docker/ 均被忽略）；
+# 各目录的 .env.example 是模板，必须保留在版本库中。
+.env
+.env.*
+!.env.example
+!**/.env.example
 
 # 编辑器 / 系统
 .vscode/

@@ -84,6 +84,23 @@ class NoSecretsInTrackedFilesTests(unittest.TestCase):
         for entry in ("/test_*.py", "/test_output*.txt"):
             self.assertIn(entry, ignore)
 
+    def test_env_files_are_ignored_but_examples_are_tracked(self) -> None:
+        """本地 .env（含密钥）在任何目录层级都必须被忽略；模板文件必须保持可入库。"""
+
+        def ignored(relative: str) -> bool:
+            result = subprocess.run(
+                ["git", "check-ignore", "-q", relative],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+            )
+            return result.returncode == 0
+
+        for secret_file in (".env", "docker/.env", "docker/.env.local", ".env.prod"):
+            self.assertTrue(ignored(secret_file), f"{secret_file} 必须被 .gitignore 忽略")
+        for template in (".env.example", "docker/.env.example"):
+            self.assertFalse(ignored(template), f"{template} 是模板，不能被忽略")
+
 
 if __name__ == "__main__":
     unittest.main()
