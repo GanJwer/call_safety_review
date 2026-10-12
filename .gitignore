@@ -16,3 +16,9 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
+# 本地临时脚本与输出（可能含密钥，禁止入库）
+/test_*.py
+/test_output*.txt
+/*_local.py
+/scratch/
