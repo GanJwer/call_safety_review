@@ -49,7 +49,7 @@ docker run --rm -p 8080:8080 -p 8443:8443 \
   -e ACPS_PUBLIC_ENDPOINT=https://review.example.com/acps/aip/v1 \
   -e ACPS_ORGANIZATION=示例机构 -e ACPS_COUNTRY_CODE=CN \
   -e ACPS_USERNAME=... -e ACPS_PASSWORD=... \
-  -e OPENAI_MODEL=... -e OPENAI_API_KEY=... -e CSR_AUTH_TOKEN=... \
+  -e DEEPSEEK_API_KEY=... -e CSR_AUTH_TOKEN=... \
   -v csr-acps-state:/var/lib/content-safety-review \
   content-safety-review:1.0.0 acps
 
@@ -69,7 +69,7 @@ docker run --rm --read-only --tmpfs /tmp \
   -v csr-acps-state:/var/lib/content-safety-review \
   -e ACPS_REGISTRY_URL=... -e ACPS_CA_URL=... -e ACPS_DISCOVERY_URL=... \
   -e ACPS_PUBLIC_ENDPOINT=... -e ACPS_ORGANIZATION=... -e ACPS_COUNTRY_CODE=CN \
-  -e OPENAI_MODEL=... -e OPENAI_API_KEY=... \
+  -e DEEPSEEK_API_KEY=... \
   content-safety-review:1.0.0 acps --check
 # 逐项输出：acps_env_vars / state_dir_writable / model_provider / agent_assembly / acps_projection
 ```
@@ -140,7 +140,8 @@ docker run --entrypoint sh -it content-safety-review:1.0.0   # 进容器排查
 | `CSR_LOG_LEVEL` | `INFO` | 日志级别（输出到 stdout） |
 | `ACPS_WORKSPACE` | `/var/lib/content-safety-review/acps` | ACPs 身份材料与任务存储，需要可写卷 |
 | `ACPS_*` | — | Registry / CA / Discovery / 公开端点 / 机构等部署事实，见 `docker/.env.example` 与手册《Identity 与可信注册》 |
-| `OPENAI_MODEL` / `OPENAI_API_KEY` / `OPENAI_BASE_URL` | — | ACPs 模式下审查智能体使用的模型 Provider |
+| `DEEPSEEK_API_KEY`（+ 可选 `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL`） | 模型 `deepseek-chat`，base_url `https://api.deepseek.com` | ACPs 模式下审查智能体使用的模型 Provider，**DeepSeek 只需填 key** |
+| `LLM_*` / `OPENAI_*` | — | 通用 / OpenAI 兼容命名，优先级 `LLM_*` > `OPENAI_*` > `DEEPSEEK_*`；自建网关填 `OPENAI_BASE_URL` 即可 |
 | `CSR_APPROVAL_POLL_SECONDS` | `60` | Registry 待审核时重新推进注册状态的间隔 |
 
 **运维要点**：容器以非 root 运行，compose 已配置 `read_only: true` + `tmpfs: /tmp` +
@@ -323,7 +324,8 @@ JSONRPC 端点 `…/acps/aip/v1/rpc`、`security: [{"mtls": []}]`、`streaming: 
   引擎无需改动；`policy` 命令会立即列出新规则。
 - **模型参与**：`build_review_agent()` 生成的智能体会把审查结论作为模型可用工具，指令要求"以 `safety_review_call` 的结构化结论为准"，
   并可用 `safety_scan_*`、`safety_check_scope`、`safety_rewrite_payload` 取证与解释。
-  真实模型接入：`OPENAI_MODEL` / `OPENAI_API_KEY` / `OPENAI_BASE_URL`。
+  真实模型接入：默认按 DeepSeek 解析（`DEEPSEEK_API_KEY` 一行即可，模型 `deepseek-chat`）；
+  也可用 `LLM_*` / `OPENAI_*` 命名接 OpenAI 或自建网关。
 
 ## 9. 已知边界
 

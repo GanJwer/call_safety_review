@@ -60,9 +60,17 @@ services:
       ACPS_USERNAME: "${ACPS_USERNAME:-}"
       ACPS_PASSWORD: "${ACPS_PASSWORD:-}"
       # —— 模型 Provider（审查智能体的推理侧）——
+      # DeepSeek：只填 DEEPSEEK_API_KEY 即可（模型默认 deepseek-chat）
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      DEEPSEEK_MODEL: "${DEEPSEEK_MODEL:-}"
+      DEEPSEEK_BASE_URL: "${DEEPSEEK_BASE_URL:-}"
+      # OpenAI / 自建网关（优先级：LLM_* > OPENAI_* > DEEPSEEK_*）
       OPENAI_MODEL: "${OPENAI_MODEL:-}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-https://api.openai.com/v1}"
+      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-}"
+      LLM_MODEL: "${LLM_MODEL:-}"
+      LLM_API_KEY: "${LLM_API_KEY:-}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-}"
       # —— 内嵌 HTTP 服务 ——
       CSR_HTTP_PORT: "8080"
       CSR_AUTH_TOKEN: "${CSR_AUTH_TOKEN:-}"

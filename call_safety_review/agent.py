@@ -13,6 +13,10 @@ from .hooks import PreSendGuardHooks, ReviewAuditHooks
 
 AGENT_ID = "content-safety-review"
 
+#: DeepSeek 提供 OpenAI 兼容接口：只给 ``DEEPSEEK_API_KEY`` 时按这里的默认值接入。
+DEEPSEEK_DEFAULT_MODEL = "deepseek-chat"
+DEEPSEEK_DEFAULT_BASE_URL = "https://api.deepseek.com"
+
 DEFAULT_INSTRUCTIONS: tuple[str, ...] = (
     "你是「智能体调用内容安全审查智能体」，职责是在一次调用发出之前完成载荷层审查。",
     "每次审查都必须调用 safety_review_call，并以其结构化结论为准；不要自行发明结论取值。",
@@ -94,20 +98,68 @@ def build_runtime(
     return WitRuntime(agent, workspace=workspace, acps=acps)
 
 
+def _first_env(*names: str) -> str | None:
+    """按顺序返回第一个非空环境变量。"""
+
+    for name in names:
+        value = os.environ.get(name)
+        if value and value.strip():
+            return value.strip()
+    return None
+
+
+def resolve_model_settings() -> dict[str, str]:
+    """解析模型连接参数，兼容三种环境变量命名。
+
+    * 通用命名：``LLM_MODEL`` / ``LLM_API_KEY`` / ``LLM_BASE_URL``（优先级最高）
+    * OpenAI 命名：``OPENAI_MODEL`` / ``OPENAI_API_KEY`` / ``OPENAI_BASE_URL``（手册约定）
+    * DeepSeek 命名：``DEEPSEEK_MODEL`` / ``DEEPSEEK_API_KEY`` / ``DEEPSEEK_BASE_URL``
+
+    只给 ``DEEPSEEK_API_KEY`` 时，模型与 base_url 自动落到 DeepSeek 默认值，
+    因此接 DeepSeek 只需要一个环境变量。
+    """
+
+    model = _first_env("LLM_MODEL", "OPENAI_MODEL", "DEEPSEEK_MODEL")
+    api_key = _first_env("LLM_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY")
+    base_url = _first_env("LLM_BASE_URL", "OPENAI_BASE_URL", "DEEPSEEK_BASE_URL")
+
+    deepseek_only = (
+        _first_env("DEEPSEEK_API_KEY") is not None
+        and _first_env("LLM_API_KEY", "OPENAI_API_KEY") is None
+        and _first_env("LLM_BASE_URL", "OPENAI_BASE_URL") is None
+    )
+    if deepseek_only:
+        model = model or DEEPSEEK_DEFAULT_MODEL
+        base_url = base_url or DEEPSEEK_DEFAULT_BASE_URL
+
+    return {
+        "model": model or "",
+        "api_key": api_key or "",
+        "base_url": base_url or "https://api.openai.com/v1",
+    }
+
+
 def openai_model_from_env(*, temperature: float = 0.0) -> Any:
-    """按手册约定从 ``OPENAI_MODEL`` / ``OPENAI_API_KEY`` / ``OPENAI_BASE_URL`` 接入模型。"""
+    """按环境变量接入模型 Provider（OpenAI 兼容即可，例如 DeepSeek）。
+
+    DeepSeek 示例（只需 key）::
+
+        set DEEPSEEK_API_KEY=sk-...
+
+    OpenAI 或自建网关沿用手册约定：``OPENAI_MODEL`` / ``OPENAI_API_KEY`` / ``OPENAI_BASE_URL``。
+    """
 
     from wit import OpenAIChatProvider
 
-    model_name = os.environ.get("OPENAI_MODEL")
-    if not model_name:
-        raise RuntimeError("环境变量 OPENAI_MODEL 未设置，无法构造真实模型 Provider。")
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("环境变量 OPENAI_API_KEY 未设置，无法构造真实模型 Provider。")
+    settings = resolve_model_settings()
+    if not settings["model"] or not settings["api_key"]:
+        raise RuntimeError(
+            "未配置模型 Provider：需要 LLM_MODEL / OPENAI_MODEL / DEEPSEEK_MODEL 之一，"
+            "以及对应的 API Key（LLM_API_KEY / OPENAI_API_KEY / DEEPSEEK_API_KEY）。"
+        )
     return OpenAIChatProvider(
-        model=model_name,
-        api_key=api_key,
-        base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        model=settings["model"],
+        api_key=settings["api_key"],
+        base_url=settings["base_url"],
         temperature=temperature,
     )

@@ -208,8 +208,17 @@ async def preflight(
 
     if model is None:
         try:
+            from .agent import resolve_model_settings
+
+            resolved = resolve_model_settings()
             model = openai_model_from_env()
-            checks.append({"name": "model_provider", "ok": True, "detail": "已按环境变量构造"})
+            checks.append(
+                {
+                    "name": "model_provider",
+                    "ok": True,
+                    "detail": f"{resolved['model']} @ {resolved['base_url']}",
+                }
+            )
         except RuntimeError as exc:
             model = _PreflightModel()
             checks.append({"name": "model_provider", "ok": False, "detail": str(exc)})
