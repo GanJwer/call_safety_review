@@ -238,7 +238,7 @@ if not verdict.allowed:
 send(**verdict.to_forward_frame())
 ```
 
-结论中的 `evidence` 与 `redactions` 只保留**遮蔽后的预览**（如 `139*******00`），
+结论中的 `evidence` 与 `redactions` 只保留**遮蔽后的预览**（如 `13*******00`，两侧各保留 2 位），
 不会把命中的敏感原文写入结论。
 
 ### 4.2 出站闸门（推荐）
@@ -422,7 +422,10 @@ $env:DEEPSEEK_API_KEY='sk-...'
 | 400 | 请求体不是合法 JSON，或缺少 `task_goal` / `target_capability` |
 | 411 | 缺少 `Content-Length`，或使用了不支持的 `Transfer-Encoding: chunked` |
 | 413 | 请求体超过 `CSR_MAX_BODY_BYTES` |
-| 405 / 404 | 方法或路径不支持 |
+| 404 | 未知路径；或路径存在但该端点不服务此方法（如对 `/healthz` 发 `POST`） |
+| 501 | 框架未实现的方法（`PUT` / `DELETE` / `OPTIONS` / `PATCH`），响应体为 `text/html` |
+
+> 本表只列接口层错误码；`/review` 的 `403` / `409` 属于结论到状态码的映射，见 §3.3。
 
 ### 6.5 运维要点
 
@@ -447,8 +450,10 @@ $env:DEEPSEEK_API_KEY='sk-...'
 6. **仍未验证**：真实 Registry / CA / Discovery 的注册与证书签发、跨主机 mTLS、AMP 落库与
    RabbitMQ 配置——需要真实 ACPs 基础设施，本地只能用不可达地址验证失败路径
    （已确认：非终态保持运行、`/readyz` 503、状态卷落盘）。
-7. **`acps_service.py` 不在本地单元测试覆盖范围内**，本地只验证 Agent 声明、能力投影与 ACS 草稿
-   （`tests/test_acps_projection.py`）。
+7. **`acps_service.py` 只覆盖到配置与装配层**：本地已验证部署前自检五项（`tests/test_preflight.py`）、
+   ACS 投影与能力绑定（`tests/test_acps_projection.py`），以及该配置在离线协议测试中的使用
+   （`tests/test_acps_offline.py`）；**未覆盖**的是 `serve()` 的真实 ATR 注册、`serve_direct_partner`
+   的真实 mTLS listener 与 AMP 上报落库——这些需要真实平台基础设施。
 8. **审查在调用关键路径上**：引入的时延取决于所选模型；`review()` 库内直调与 HTTP `/review`
    走确定性引擎，无模型依赖。
 
