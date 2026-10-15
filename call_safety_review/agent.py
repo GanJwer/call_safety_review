@@ -14,7 +14,7 @@ from .hooks import PreSendGuardHooks, ReviewAuditHooks
 AGENT_ID = "content-safety-review"
 
 #: DeepSeek 提供 OpenAI 兼容接口：只给 ``DEEPSEEK_API_KEY`` 时按这里的默认值接入。
-DEEPSEEK_DEFAULT_MODEL = "deepseek-chat"
+DEEPSEEK_DEFAULT_MODEL = "deepseek-flash"
 DEEPSEEK_DEFAULT_BASE_URL = "https://api.deepseek.com"
 
 DEFAULT_INSTRUCTIONS: tuple[str, ...] = (
