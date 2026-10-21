@@ -294,7 +294,7 @@ def _cmd_health(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m call_safety_review",
-        description="智能体调用内容安全审查智能体",
+        description="内容安全预检智能体",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

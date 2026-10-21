@@ -1,4 +1,4 @@
-# 智能体调用内容安全审查智能体：容器镜像
+# 内容安全预检智能体：容器镜像
 #
 # 构建（在 call_safety_review 目录下执行，vendor/ 已含发行目录提供的两个 wheel）：
 #   docker build -t content-safety-review:1.0.0 .
@@ -18,7 +18,7 @@ FROM python:3.12-slim
 
 # wit 支持 CPython 3.12 / 3.13 / 3.14；此处固定 3.12 slim 作为最小可用基座。
 LABEL org.opencontainers.image.title="content-safety-review" \
-      org.opencontainers.image.description="智能体调用内容安全审查智能体（wit 2.1.0 / acps-sdk 2.2.0）" \
+      org.opencontainers.image.description="内容安全预检智能体（wit 2.1.0 / acps-sdk 2.2.0）" \
       org.opencontainers.image.version="1.0.0" \
       org.opencontainers.image.licenses="Proprietary"
 

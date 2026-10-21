@@ -1,7 +1,7 @@
 """把审查智能体作为 ACPs Partner 对外提供 ``safety.review_call`` 技能。
 
 其它智能体即可通过 AIP Direct（JSON-RPC / mTLS）调用本审查服务，这与任务书
-「智能体调用内容安全审查智能体」的形态一致：审查方是 Partner，调用方是 Leader。
+「内容安全预检智能体」的形态一致：审查方是 Partner，调用方是 Leader。
 
 > [!WARNING]
 > 本模块需要真实的 ACPs 基础设施（Registry、CA、Discovery、证书与 mTLS 监听地址），
