@@ -1,4 +1,4 @@
-# 智能体调用内容安全审查智能体
+# 内容安全预检智能体
 
 > 依据《wit 开发指导书》实现（wit 2.1.0 / acps-sdk 2.2.0）。
 > 定位：补齐平台在**任务载荷层**的缺口——提示注入、语义越权、最小化披露与安全载荷重写。
@@ -328,11 +328,11 @@ AMP 上报端点为 `wt.ioa.pub:19092`（Kafka/TLS，容器需可出网）。
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `DEEPSEEK_API_KEY` | — | **接 DeepSeek 只需填这一个**，模型与 base_url 自动落到默认值 |
-| `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL` | `deepseek-chat` / `https://api.deepseek.com` | 可覆盖 |
+| `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL` | `deepseek-flash` / `https://api.deepseek.com` | 可覆盖 |
 | `OPENAI_*` / `LLM_*` | — | OpenAI 或自建网关，填 `*_BASE_URL` 即可 |
 
-参考耗时（同一账号，以 `GET /models` 清单为准）：`deepseek-chat` 单次审查 4.6–6.6 秒、
-`deepseek-flash` 7.8–9.5 秒、`deepseek-v4-pro` 14–20 秒。审查在调用关键路径上，建议用低延迟模型。
+当前比赛部署固定使用 `deepseek-flash`。
+审查耗时受网络和服务负载影响，以实际测试为准。
 
 ### 5.4 结论契约与策略开关
 

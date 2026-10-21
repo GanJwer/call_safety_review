@@ -1,7 +1,7 @@
 [project]
 name = "call-safety-review"
 version = "1.0.0"
-description = "智能体调用内容安全审查智能体：调用发出前的载荷层审查、最小化披露与安全载荷重写"
+description = "内容安全预检智能体：发起外部调用前，提供安全检查与风险判断，帮助识别潜在的内容、权限和数据风险，并给出审查结论及安全处理建议。"
 requires-python = ">=3.12,<3.15"
 readme = "README.md"
 license = { text = "Proprietary" }

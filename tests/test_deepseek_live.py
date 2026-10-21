@@ -25,7 +25,7 @@ from call_safety_review import (
     build_review_agent,
 )
 
-MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
 BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 REDACT_PROMPT = (

@@ -79,7 +79,7 @@ def build_capabilities(
     engine: ReviewEngine,
     *,
     expose_over_acps: bool = True,
-    tags: tuple[str, ...] = ("content-safety", "call-review"),
+    tags: tuple[str, ...] = ("content-safety", "call-review", "risk-assessment"),
 ) -> list[Any]:
     """构造审查智能体的能力集合。
 
@@ -165,9 +165,8 @@ def build_capabilities(
         Capability.tool(
             id="safety.review_call",
             description=(
-                "在一次调用发送前审查任务目标、参数与待传递文本，返回 "
-                "allow / allow_redacted / needs_confirmation / block 结论，"
-                "并给出风险原因、必要确认项与可继续下发的安全任务文本和参数。"
+                "发起外部调用前，对任务、参数和待传递内容进行安全检查，"
+                "识别潜在风险，并返回审查结论和安全处理建议。"
             ),
             handler=review_call,
             input_schema=CALL_REVIEW_SCHEMA,
@@ -177,7 +176,7 @@ def build_capabilities(
             acps_skill=expose_over_acps,
             version="1.0.0",
             tags=list(tags),
-            examples=["审查一次向 hr.employee.profile 的查询是否会泄露隐私数据"],
+            examples=["检查一次外部调用是否存在安全风险"],
         ),
         Capability.tool(
             id="safety.scan_injection",

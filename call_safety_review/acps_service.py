@@ -1,7 +1,7 @@
 """把审查智能体作为 ACPs Partner 对外提供 ``safety.review_call`` 技能。
 
 其它智能体即可通过 AIP Direct（JSON-RPC / mTLS）调用本审查服务，这与任务书
-「智能体调用内容安全审查智能体」的形态一致：审查方是 Partner，调用方是 Leader。
+「内容安全预检智能体」的形态一致：审查方是 Partner，调用方是 Leader。
 
 > [!WARNING]
 > 本模块需要真实的 ACPs 基础设施（Registry、CA、Discovery、证书与 mTLS 监听地址），
@@ -21,6 +21,10 @@ from typing import Any, Sequence
 
 from .agent import build_engine, build_review_agent
 from .engine import ReviewEngine
+from .preprovisioned_acps import (
+    PreprovisionedAcpsMaterial,
+    attach_preprovisioned_identity,
+)
 
 REQUIRED_ENV_VARS: tuple[str, ...] = (
     "ACPS_REGISTRY_URL",
@@ -49,6 +53,7 @@ class AcpsSettings:
     requested_validity: int = 365
     strict_interop: bool = True
     request_timeout_seconds: float = 90.0
+    preprovisioned: PreprovisionedAcpsMaterial | None = None
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> AcpsSettings:
@@ -68,6 +73,7 @@ class AcpsSettings:
             serve_host=values.get("ACPS_SERVE_HOST", cls.serve_host),
             serve_port=int(values.get("ACPS_SERVE_PORT", cls.serve_port)),
             requested_validity=int(values.get("ACPS_CERT_VALIDITY", cls.requested_validity)),
+            preprovisioned=PreprovisionedAcpsMaterial.from_env(values),
         )
 
 
@@ -138,7 +144,14 @@ def build_partner_runtime(
             "只读根文件系统下需要挂载可写卷，例如 "
             "-v csr-acps-state:/var/lib/content-safety-review"
         ) from exc
-    return WitRuntime(agent, workspace=workspace, acps=build_acps_config(settings))
+    runtime = WitRuntime(agent, workspace=workspace, acps=build_acps_config(settings))
+    if settings.preprovisioned is not None:
+        attach_preprovisioned_identity(
+            runtime,
+            settings.preprovisioned,
+            public_endpoint=settings.public_endpoint,
+        )
+    return runtime
 
 
 class _PreflightModel:
@@ -224,6 +237,23 @@ async def preflight(
             checks.append({"name": "model_provider", "ok": False, "detail": str(exc)})
     else:
         checks.append({"name": "model_provider", "ok": True, "detail": type(model).__name__})
+
+    if settings.preprovisioned is not None:
+        try:
+            aic, _paths, _acs = settings.preprovisioned.validate(
+                public_endpoint=settings.public_endpoint
+            )
+            checks.append(
+                {
+                    "name": "preprovisioned_identity",
+                    "ok": True,
+                    "detail": {"aic": aic, "acs": str(settings.preprovisioned.acs_path)},
+                }
+            )
+        except RuntimeError as exc:
+            checks.append(
+                {"name": "preprovisioned_identity", "ok": False, "detail": str(exc)}
+            )
 
     # 状态目录不可写时，装配与 ACS 投影检查改用临时目录，避免自检本身崩溃。
     import tempfile
@@ -317,8 +347,6 @@ async def serve(
     服务运行到收到 SIGTERM / SIGINT，然后 ``stop_serving()`` 并返回 ``status="stopped"``。
     """
 
-    from wit import RegistryPasswordCredentials
-
     from .agent import openai_model_from_env
     from .http_service import ReviewService, start_in_thread
 
@@ -348,6 +376,37 @@ async def serve(
 
     enrollment = None
     try:
+        if settings.preprovisioned is not None:
+            serving = await runtime.serve_direct_partner(
+                host=settings.serve_host,
+                port=settings.serve_port,
+                amp=False,
+            )
+            serving_status = str(getattr(serving, "status", "unknown"))
+            serving_details = serving.to_dict()
+            state["acps_status"] = serving_status
+            state["summary"] = serving_details
+            if serving_status != "serving":
+                raise RuntimeError(f"已有证书模式启动失败：{serving_details}")
+            state["ready"] = True
+            logging.getLogger("call_safety_review.acps").info(
+                "ACPs Partner 使用已审核身份在 %s:%s 提供服务；AIC=%s",
+                settings.serve_host,
+                settings.serve_port,
+                settings.preprovisioned.validate(
+                    public_endpoint=settings.public_endpoint
+                )[0],
+            )
+            await stop.wait()
+            return {
+                "status": "stopped",
+                "acs": str(settings.preprovisioned.acs_path),
+                "summary": serving_details,
+                "http_port": http_port or None,
+            }
+
+        from wit import RegistryPasswordCredentials
+
         credentials = credentials or RegistryPasswordCredentials.from_env()
         while True:
             enrollment = await runtime.up_until_ready(
