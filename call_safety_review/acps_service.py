@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .agent import build_engine, build_review_agent
+from .amp_observability import TaskCorrelatedAmpAccessHooks
 from .engine import ReviewEngine
 from .preprovisioned_acps import (
     PreprovisionedAcpsMaterial,
@@ -122,6 +123,7 @@ def build_partner_agent(
         **agent_kwargs,
     )
     agent.protocols = [AcpsDirect(modes=tuple(modes))]
+    agent.aip_hooks = [*agent.aip_hooks, TaskCorrelatedAmpAccessHooks()]
     return agent
 
 
@@ -151,6 +153,9 @@ def build_partner_runtime(
             settings.preprovisioned,
             public_endpoint=settings.public_endpoint,
         )
+    for hook in agent.aip_hooks:
+        if isinstance(hook, TaskCorrelatedAmpAccessHooks):
+            hook.bind_runtime(runtime)
     return runtime
 
 
@@ -380,7 +385,8 @@ async def serve(
             serving = await runtime.serve_direct_partner(
                 host=settings.serve_host,
                 port=settings.serve_port,
-                amp=False,
+                amp=True,
+                amp_periodic_logs=("heartbeat",),
             )
             serving_status = str(getattr(serving, "status", "unknown"))
             serving_details = serving.to_dict()
