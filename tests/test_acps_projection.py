@@ -67,6 +67,10 @@ class AcpsProjectionTests(unittest.TestCase):
         self.assertTrue(draft["endPoints"][0]["url"].endswith("/rpc"))
         self.assertEqual(draft["capabilities"]["streaming"], True)
         self.assertEqual(draft["provider"]["organization"], "Example Org")
+        aip_hook_types = {type(hook).__name__ for hook in runtime.compiled.aip_hooks}
+        amp_hook_types = {type(hook).__name__ for hook in runtime.compiled.amp_hooks}
+        self.assertIn("TaskCorrelatedAmpAccessHooks", aip_hook_types)
+        self.assertNotIn("AmpAccessLoggingHooks", amp_hook_types)
 
     def test_without_acps_binding_there_is_no_acs_draft(self) -> None:
         from wit import WitRuntime
